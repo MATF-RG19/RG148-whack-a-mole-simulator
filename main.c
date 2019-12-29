@@ -1,10 +1,22 @@
 #include <GL/glut.h>
+#include <time.h>
+#include <stdio.h>
+
+#define TIMER_ID 0
+#define TIMER_INTERVAL 20
 
 static int window_width, window_height;
 
+static int animation_ongoing;
+static float x_current=0, y_current=0, z_current=0;
+int current_hole = 5; //promenljiva koja pamti koja je trenutna rupa da ne bi dolazilo do ponavljanja
+
 static void on_keyboard(unsigned char key, int x, int y);
+static void on_timer(int value);
 static void on_reshape(int width, int height);
 static void on_display(void);
+
+
 static void drawCircles(void);
 static void drawBat(void);
 
@@ -21,6 +33,8 @@ int main(int argc, char** argv){
     glutReshapeFunc(on_reshape);
     glutDisplayFunc(on_display);
     
+    animation_ongoing = 0;
+    
    
     glMatrixMode(GL_PROJECTION);
     gluPerspective(70, 800.0/600.0, 0.1, 250);
@@ -32,7 +46,7 @@ int main(int argc, char** argv){
     glEnable(GL_LIGHT0);
     
     float light_position[] = {-1, 1, 1, 0};
-    float light_ambient[] = {.3f, .3f, .3f, 1};
+    float light_ambient[] = {.4f, .4f, .4f, 1};
     float light_diffuse[] = {.7f, .7f, .7f, 1};
     float light_specular[] = {.7f, .7f, .7f, 1};
 
@@ -51,10 +65,98 @@ int main(int argc, char** argv){
 static void on_keyboard(unsigned char key, int x, int y){
     
     switch(key) {
+        case 'g':
+        case 'G':
+            if (!animation_ongoing){
+                glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
+                animation_ongoing = 1;
+            }
+            break;
+        case 's':
+        case 'S':
+            animation_ongoing = 0;
+            break;
         case 27:
             exit(0);
             break;
     }
+}
+
+//vraca random broj 1-9 da bi se odredilo iz koje rupe izlazi objekat
+//i postavlja globlane koordinate iznad te rupe
+int randomHole(int curr_hole){
+    
+    srand(time(NULL));
+    
+    int upper = 9;
+    int lower = 1;
+    
+    int random_num =  (rand() % (upper - lower + 1) + lower);
+    while (random_num == current_hole){
+        random_num = (rand() % (upper - lower + 1) + lower);
+    }
+    current_hole = random_num;
+    
+    switch (random_num){
+        case 1:
+            x_current = 1.4;
+            z_current = -1.4;
+            break;
+        case 2:
+            x_current = 0;
+            z_current = -1.4;
+            break;
+        case 3:
+            x_current = -1.4;
+            z_current = -1.4;
+            break;
+        case 4:
+            x_current = 1.4;
+            z_current = 0;
+            break;
+        case 5:
+            x_current = 0;
+            z_current = 0;
+            break;
+        case 6:
+            x_current = -1.4;
+            z_current = 0;
+            break;
+        case 7:
+            x_current = 1.4;
+            z_current = 1.4;
+            break;
+        case 8:
+            x_current = 0;
+            z_current = 1.4;
+            break;
+        case 9:
+            x_current = -1.4;
+            z_current = 1.4;
+            break;
+    }
+    
+    return random_num;
+    
+}
+
+static void on_timer(int value){
+    
+    if (value != TIMER_ID)
+        return;
+    
+    if (y_current >= 1 && animation_ongoing){
+        y_current = 0;
+        randomHole(current_hole);
+    }
+    
+    y_current += 0.04;
+    
+    
+    glutPostRedisplay();
+    
+    if (animation_ongoing)
+        glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
 }
 
 void draw_axis(float len) {
@@ -142,7 +244,9 @@ void drawBat(void){
         glTranslatef(-1, 0, -3.3);
         glRotatef(-40, 0, 1, 0);
 
-        gluCylinder(qobj, 0.1, 0.3, 4, 30, 30);
+        gluCylinder(qobj, 0.1, 0.25, 4, 150, 150);
+        glTranslatef(0, 0, 4);
+        gluDisk(qobj, 0, 0.25, 30, 30);
             
         gluDeleteQuadric(qobj);
     glPopMatrix();
@@ -199,17 +303,23 @@ static void on_display(void){
        
     //iscrtavanje palice
     glPushMatrix();
-        GLfloat ambient1[] = {0.4,0.2,0.2,0};
-        GLfloat diffuse1[] = {0.3,0.3,0,0,0};
-        GLfloat specular1[] = {0.6,0.6,0.6,0};
+        GLfloat ambient1[] = {0.45,0.3,0.1,0};
+        GLfloat diffuse1[] = {0.4,0.2,0.2,0};
+        GLfloat specular1[] = {0.3,0.3,0.3,0};
         GLfloat shininess1 = 80;
 
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient1);
         glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse1);
-        glMaterialfv(GL_FRONT, GL_SPECULAR, specular1);
-        glMaterialf(GL_FRONT, GL_SHININESS, shininess1);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular1);
+        glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess1);
         
         drawBat();
+    glPopMatrix(); 
+
+    //kuglica
+    glPushMatrix();
+        glTranslatef(x_current, y_current, z_current);
+        glutSolidSphere(0.15, 30, 30);
     glPopMatrix();
     
     glutSwapBuffers();

@@ -1,18 +1,33 @@
 #include <GL/glut.h>
 #include <time.h>
 #include <stdio.h>
+#include <math.h>
 
 #define TIMER_ID 0
+#define TIMER_ID2 0
 #define TIMER_INTERVAL 20
+#define TIMER_INTERVAL2 10  
 
 static int window_width, window_height;
 
 static int animation_ongoing;
+static int keyboard_active;
 static float x_current=0, y_current=0, z_current=0;
 int current_hole = 5; //promenljiva koja pamti koja je trenutna rupa da ne bi dolazilo do ponavljanja
 
+
+/*globalne promenljive za palicu*/
+static float step = 5;
+static float translate_step = 0;
+static float z_bat=-3.3; //pocetni polozaj
+static float wanted_z_bat; //zeljeni polozaj
+static float rot_angle = 0; //ugao rotacije
+static float wanted_angle; // zeljeni ugao
+
 static void on_keyboard(unsigned char key, int x, int y);
+static void on_mouse(int button, int state, int x, int y);
 static void on_timer(int value);
+static void on_timer2(int value);
 static void on_reshape(int width, int height);
 static void on_display(void);
 
@@ -29,6 +44,7 @@ int main(int argc, char** argv){
     glutInitWindowPosition(100, 100);
     glutCreateWindow(argv[0]);
     
+    glutMouseFunc(on_mouse);
     glutKeyboardFunc(on_keyboard);
     glutReshapeFunc(on_reshape);
     glutDisplayFunc(on_display);
@@ -62,19 +78,107 @@ int main(int argc, char** argv){
 }
 
 
-static void on_keyboard(unsigned char key, int x, int y){
-    
-    switch(key) {
-        case 'g':
-        case 'G':
+static void on_mouse(int button, int state, int x, int y){
+    switch(button) {
+        case GLUT_LEFT_BUTTON:
             if (!animation_ongoing){
                 glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
                 animation_ongoing = 1;
             }
             break;
-        case 's':
-        case 'S':
+        case GLUT_RIGHT_BUTTON:
             animation_ongoing = 0;
+            break;
+    }
+}
+
+static void on_keyboard(unsigned char key, int x, int y){
+    
+    switch(key) {
+        case '1':
+            if (!keyboard_active){
+                wanted_angle =90;
+                step = 3;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '2':
+            if (!keyboard_active){
+                wanted_angle = 60;
+                step = 2;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '3':
+            if (!keyboard_active){
+                wanted_angle = 30;
+                step = 1;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '4':
+            if (!keyboard_active){
+                wanted_angle = 90;
+                step = 3;
+                wanted_z_bat = -2.1;
+                translate_step = 0.04;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '5':
+            if (!keyboard_active){
+                wanted_angle = 60;
+                step = 2;
+                wanted_z_bat = -2.1;
+                translate_step = 0.04;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            
+            break;
+        case '6':
+            if (!keyboard_active){
+                wanted_angle = 30;
+                step = 1;
+                wanted_z_bat = -2.1;
+                translate_step = 0.04;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '7':
+            if (!keyboard_active){
+                wanted_angle = 90;
+                step = 3;
+                wanted_z_bat = -0.6;
+                translate_step = 0.09;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '8':
+            if (!keyboard_active){
+                wanted_angle = 60;
+                step = 2;
+                wanted_z_bat = -0.6;
+                translate_step = 0.09;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
+            break;
+        case '9':
+            if (!keyboard_active){
+                wanted_angle = 30;
+                step = 1;
+                wanted_z_bat = -0.6;
+                translate_step = 0.09;
+                glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+                keyboard_active = 1;
+            }
             break;
         case 27:
             exit(0);
@@ -140,6 +244,33 @@ int randomHole(int curr_hole){
     
 }
 
+static void on_timer2(int value){
+    if (value != TIMER_ID2)
+        return;
+    
+    if (rot_angle == wanted_angle){
+        step *= -1;
+        translate_step *= -1;
+    }
+    
+    rot_angle += step;
+    z_bat += translate_step;
+    
+    if (rot_angle <= 0){
+        keyboard_active = 0;
+        step *= -1;
+        translate_step = 0;
+    }
+    
+    
+    glutPostRedisplay();
+    
+    if (keyboard_active)
+        glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
+    
+}
+
+//animacija iskakanja kuglice
 static void on_timer(int value){
     
     if (value != TIMER_ID)
@@ -152,27 +283,10 @@ static void on_timer(int value){
     
     y_current += 0.04;
     
-    
     glutPostRedisplay();
     
     if (animation_ongoing)
         glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
-}
-
-void draw_axis(float len) {
-    glBegin(GL_LINES);
-        glColor3f(1,0,0);
-        glVertex3f(0,0,0);
-        glVertex3f(len,0,0);
-
-        glColor3f(0,1,0);
-        glVertex3f(0,0,0);
-        glVertex3f(0,len,0);
-
-        glColor3f(0,0,1);
-        glVertex3f(0,0,0);
-        glVertex3f(0,0,len);
-    glEnd();
 }
 
 static void on_reshape(int width, int height)
@@ -241,11 +355,15 @@ void drawBat(void){
     
         GLUquadricObj *qobj = gluNewQuadric();
     
-        glTranslatef(-1, 0, -3.3);
+        //ovo je za animaciju
+        glTranslatef(-1, 0, z_bat);
+        glRotatef(rot_angle, 0, 1, 0);
+        
         glRotatef(-40, 0, 1, 0);
 
         gluCylinder(qobj, 0.1, 0.25, 4, 150, 150);
         glTranslatef(0, 0, 4);
+        
         gluDisk(qobj, 0, 0.25, 30, 30);
             
         gluDeleteQuadric(qobj);
@@ -263,8 +381,6 @@ static void on_display(void){
     gluLookAt(0, 5, -3.5, 
               0, 0, 0,
               0, 1, 0);
-    
-   // draw_axis(5);
     
     //iscrtavanje platforme
     glPushMatrix();
@@ -300,6 +416,20 @@ static void on_display(void){
         drawCircles();
     glPopMatrix();
     
+    //kuglica
+    glPushMatrix();
+    GLfloat ambient4[] = {0.45,0.3,0.1,0};
+        GLfloat diffuse4[] = {0.4,0.2,0.2,0};
+        GLfloat specular4[] = {0.3,0.3,0.3,0};
+        GLfloat shininess4 = 80;
+
+        glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient4);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, diffuse4);
+        glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular4);
+        glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess4);
+        glTranslatef(x_current, y_current, z_current);
+        glutSolidSphere(0.15, 30, 30);
+    glPopMatrix();
        
     //iscrtavanje palice
     glPushMatrix();
@@ -313,14 +443,9 @@ static void on_display(void){
         glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular1);
         glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess1);
         
+        
         drawBat();
     glPopMatrix(); 
-
-    //kuglica
-    glPushMatrix();
-        glTranslatef(x_current, y_current, z_current);
-        glutSolidSphere(0.15, 30, 30);
-    glPopMatrix();
     
     glutSwapBuffers();
 }

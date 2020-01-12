@@ -2,6 +2,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define TIMER_ID 0
 #define TIMER_ID2 0
@@ -14,6 +15,7 @@ static int animation_ongoing;
 static int keyboard_active;
 static float x_current=0, y_current=0, z_current=0;
 int current_hole = 5; //promenljiva koja pamti koja je trenutna rupa da ne bi dolazilo do ponavljanja
+static float ball_speed = 0.04;
 
 
 /*globalne promenljive za palicu*/
@@ -23,6 +25,8 @@ static float z_bat=-3.3; //pocetni polozaj
 static float wanted_z_bat; //zeljeni polozaj
 static float rot_angle = 0; //ugao rotacije
 static float wanted_angle; // zeljeni ugao
+static bool y_down = false, y_stop = false;
+static int poeni = 1, broj_uvecanja = 0;
 
 static void on_keyboard(unsigned char key, int x, int y);
 static void on_mouse(int button, int state, int x, int y);
@@ -71,7 +75,6 @@ int main(int argc, char** argv){
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
     
-
     glutMainLoop();
     
     return 0;
@@ -87,7 +90,10 @@ static void on_mouse(int button, int state, int x, int y){
             }
             break;
         case GLUT_RIGHT_BUTTON:
+            printf("Broj poena: %d\n", poeni - broj_uvecanja - 1);
             animation_ongoing = 0;
+            poeni = 1;
+            ball_speed = 0.04;
             break;
     }
 }
@@ -101,6 +107,9 @@ static void on_keyboard(unsigned char key, int x, int y){
                 step = 3;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 1){
+                    poeni+=1;
+                }
             }
             break;
         case '2':
@@ -109,6 +118,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 step = 2;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 2)
+                    poeni+=1;
             }
             break;
         case '3':
@@ -117,6 +128,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 step = 1;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 3)
+                    poeni+=1;
             }
             break;
         case '4':
@@ -127,6 +140,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 translate_step = 0.04;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 4)
+                    poeni+=1;
             }
             break;
         case '5':
@@ -137,6 +152,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 translate_step = 0.04;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 5)
+                    poeni+=1;
             }
             
             break;
@@ -148,6 +165,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 translate_step = 0.04;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 6)
+                    poeni+=1;
             }
             break;
         case '7':
@@ -158,6 +177,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 translate_step = 0.09;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 7)
+                    poeni+=1;
             }
             break;
         case '8':
@@ -168,6 +189,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 translate_step = 0.09;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 8)
+                    poeni+=1;
             }
             break;
         case '9':
@@ -178,6 +201,8 @@ static void on_keyboard(unsigned char key, int x, int y){
                 translate_step = 0.09;
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
+                if (current_hole == 9)
+                    poeni+=1;
             }
             break;
         case 27:
@@ -277,13 +302,37 @@ static void on_timer(int value){
         return;
     
     if (y_current >= 1 && animation_ongoing){
+        y_stop = true;
+    }
+    
+    if (y_current >= 1.001 && animation_ongoing){
+        y_down = true;
+    }
+    
+    if (y_current <0 && animation_ongoing){
         y_current = 0;
+        y_down = false;
+        y_stop = false;
         randomHole(current_hole);
     }
     
-    y_current += 0.04;
+    if (poeni % 10 == 0 && ball_speed < 0.06){
+        ball_speed += 0.005;
+        poeni++;
+        broj_uvecanja++;
+    }
     
+    if (y_down) {
+        y_current -= ball_speed;
+    } 
+    else if (y_stop) {
+        y_current += 0.0001;
+    }
+    else {
+        y_current += ball_speed;
+    }
     glutPostRedisplay();
+    
     
     if (animation_ongoing)
         glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
@@ -428,14 +477,14 @@ static void on_display(void){
         glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, specular4);
         glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, shininess4);
         glTranslatef(x_current, y_current, z_current);
-        glutSolidSphere(0.15, 30, 30);
+        glutSolidSphere(0.30, 30, 30);
     glPopMatrix();
        
     //iscrtavanje palice
     glPushMatrix();
         GLfloat ambient1[] = {0.45,0.3,0.1,0};
         GLfloat diffuse1[] = {0.4,0.2,0.2,0};
-        GLfloat specular1[] = {0.3,0.3,0.3,0};
+        GLfloat specular1[] = {0.25,0.3,0.3,0};
         GLfloat shininess1 = 80;
 
         glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, ambient1);

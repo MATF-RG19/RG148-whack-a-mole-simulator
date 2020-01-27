@@ -3,17 +3,16 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdbool.h>
+#include <string.h>
 
 #define TIMER_ID 0
 #define TIMER_ID2 0
 #define TIMER_INTERVAL 20
 #define TIMER_INTERVAL2 10  
 
-static int window_width, window_height;
-
 static int animation_ongoing;
 static int keyboard_active;
-static float x_current=0, y_current=0, z_current=0;
+static float x_current=0, y_current=0, z_current=0; //koordinate kuglice
 int current_hole = 5; //promenljiva koja pamti koja je trenutna rupa da ne bi dolazilo do ponavljanja
 static float ball_speed = 0.04;
 
@@ -25,17 +24,21 @@ static float z_bat=-3.3; //pocetni polozaj
 static float wanted_z_bat; //zeljeni polozaj
 static float rot_angle = 0; //ugao rotacije
 static float wanted_angle; // zeljeni ugao
-static bool y_down = false, y_stop = false;
-static int poeni = 1, broj_uvecanja = 0;
+
+
+static bool y_down = false, y_stop = false; //flagovi za kretanje kuglice
+static int score = 1, level = 0;
+static int highScore = 0;
+
 
 static void on_keyboard(unsigned char key, int x, int y);
 static void on_mouse(int button, int state, int x, int y);
 static void on_timer(int value);
 static void on_timer2(int value);
-static void on_reshape(int width, int height);
 static void on_display(void);
 
-
+static void drawText(double x, double y, char *s);
+static void drawUI(void);
 static void drawCircles(void);
 static void drawBat(void);
 
@@ -50,12 +53,10 @@ int main(int argc, char** argv){
     
     glutMouseFunc(on_mouse);
     glutKeyboardFunc(on_keyboard);
-    glutReshapeFunc(on_reshape);
     glutDisplayFunc(on_display);
     
     animation_ongoing = 0;
     
-   
     glMatrixMode(GL_PROJECTION);
     gluPerspective(70, 800.0/600.0, 0.1, 250);
     
@@ -90,16 +91,21 @@ static void on_mouse(int button, int state, int x, int y){
             }
             break;
         case GLUT_RIGHT_BUTTON:
-            printf("Broj poena: %d\n", poeni - broj_uvecanja - 1);
             animation_ongoing = 0;
-            poeni = 1;
+            if (score - level - 1 > highScore)
+                highScore = score - level - 1;
+            score = 1;
+            level = 0;
             ball_speed = 0.04;
             break;
     }
 }
 
 static void on_keyboard(unsigned char key, int x, int y){
-    
+    /*pritiskom odgovaracucjeg broja 
+     palica se pokrece do te rupe i udara iznad nje,
+     a ako je kuglica izasla iz te rupe u tom trenutku
+     povecava se broj poena*/
     switch(key) {
         case '1':
             if (!keyboard_active){
@@ -108,7 +114,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 1){
-                    poeni+=1;
+                    score++;
                 }
             }
             break;
@@ -119,7 +125,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 2)
-                    poeni+=1;
+                    score++;
             }
             break;
         case '3':
@@ -129,7 +135,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 3)
-                    poeni+=1;
+                    score++;
             }
             break;
         case '4':
@@ -141,7 +147,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 4)
-                    poeni+=1;
+                    score++;
             }
             break;
         case '5':
@@ -153,7 +159,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 5)
-                    poeni+=1;
+                    score++;
             }
             
             break;
@@ -166,7 +172,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 6)
-                    poeni+=1;
+                    score++;
             }
             break;
         case '7':
@@ -178,7 +184,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 7)
-                    poeni+=1;
+                    score++;
             }
             break;
         case '8':
@@ -190,7 +196,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 8)
-                    poeni+=1;
+                    score++;
             }
             break;
         case '9':
@@ -202,7 +208,7 @@ static void on_keyboard(unsigned char key, int x, int y){
                 glutTimerFunc(TIMER_INTERVAL2, on_timer2, TIMER_ID2);
                 keyboard_active = 1;
                 if (current_hole == 9)
-                    poeni+=1;
+                    score++;
             }
             break;
         case 27:
@@ -211,8 +217,9 @@ static void on_keyboard(unsigned char key, int x, int y){
     }
 }
 
-//vraca random broj 1-9 da bi se odredilo iz koje rupe izlazi objekat
-//i postavlja globlane koordinate iznad te rupe
+/*vraca random broj 1-9 da bi se odredilo iz koje
+rupe izlazi objekat i postavlja globlane
+koordinate iznad te rupe*/
 int randomHole(int curr_hole){
     
     srand(time(NULL));
@@ -269,10 +276,13 @@ int randomHole(int curr_hole){
     
 }
 
+//animacija palice
 static void on_timer2(int value){
     if (value != TIMER_ID2)
         return;
     
+    /*kada postignemo zeljeni ugao 
+     pocinjemo da je vracamo unazad*/
     if (rot_angle == wanted_angle){
         step *= -1;
         translate_step *= -1;
@@ -281,6 +291,8 @@ static void on_timer2(int value){
     rot_angle += step;
     z_bat += translate_step;
     
+    /*zaustavljamo animaciju i 
+     resetujemo relevantne globalne promenljive*/
     if (rot_angle <= 0){
         keyboard_active = 0;
         step *= -1;
@@ -301,6 +313,8 @@ static void on_timer(int value){
     if (value != TIMER_ID)
         return;
     
+    /*kada se kuglica popne na odredjenu visinu
+      treba da stane i malo se zadrzi tu*/
     if (y_current >= 1 && animation_ongoing){
         y_stop = true;
     }
@@ -309,6 +323,9 @@ static void on_timer(int value){
         y_down = true;
     }
     
+    /*kada se vrati u pocetni polozaj 
+     resetujemo relevantne globalne promenljive
+     i random biramo sledecu rupu*/
     if (y_current <0 && animation_ongoing){
         y_current = 0;
         y_down = false;
@@ -316,21 +333,27 @@ static void on_timer(int value){
         randomHole(current_hole);
     }
     
-    if (poeni % 10 == 0 && ball_speed < 0.06){
+    /*povecavamo brzinu kuglice 
+     sa porastom broja poena ali samo
+     do odredjene brzine*/
+    if (score % 10 == 0 && ball_speed < 0.06){
         ball_speed += 0.005;
-        poeni++;
-        broj_uvecanja++;
+        score++;
+        level++;
     }
     
     if (y_down) {
         y_current -= ball_speed;
     } 
     else if (y_stop) {
+        /*zadrzavanje kuglice u vazduhu je realizovano
+         tako sto se ona zapravo pomalo pomera na gore*/
         y_current += 0.0001;
     }
     else {
         y_current += ball_speed;
     }
+    
     glutPostRedisplay();
     
     
@@ -338,12 +361,50 @@ static void on_timer(int value){
         glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
 }
 
-static void on_reshape(int width, int height)
-{
-    window_width = width;
-    window_height = height;
+static void drawText(double x, double y, char *s){
+    glRasterPos2d(x, y);
+    
+    for (char* c=s; *c != '\0'; c++){
+        glutBitmapCharacter(GLUT_BITMAP_9_BY_15, *c);
+    }
 }
 
+//ispisivanje teksta 
+static void drawUI(void){
+    glPushMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(0, 800.0, 600.0, 0, 0, 250);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_LIGHTING);
+    glColor3f(1, 1, .8);
+
+    char currentScore[20], currenthighScore[20], currentLevel[8];
+    sprintf(currenthighScore, "High score: %i", highScore);
+    sprintf(currentLevel, "Level: %i", level);
+    sprintf(currentScore, "Score: %i", score - level - 1);
+    drawText(10, 590, currentScore);
+    drawText(10, 570, currentLevel);
+    drawText(10, 550, currenthighScore);
+    
+    glEnable(GL_LIGHTING);     
+    
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(70, 800.0/600.0, 0.1, 250);
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(0, 5, -3.5, 
+              0, 0, 0,
+              0, 1, 0);
+    
+    glPopMatrix();
+}
 
 static void drawCircles(void){
     
@@ -424,7 +485,8 @@ static void on_display(void){
     
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-
+    drawUI();
+    
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     gluLookAt(0, 5, -3.5, 
@@ -467,7 +529,7 @@ static void on_display(void){
     
     //kuglica
     glPushMatrix();
-    GLfloat ambient4[] = {0.45,0.3,0.1,0};
+    	GLfloat ambient4[] = {0.45,0.3,0.1,0};
         GLfloat diffuse4[] = {0.4,0.2,0.2,0};
         GLfloat specular4[] = {0.3,0.3,0.3,0};
         GLfloat shininess4 = 80;
